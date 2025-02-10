@@ -2,12 +2,14 @@ import math
 import time
 import os
 import argparse
-import datetime  # Import the datetime module
+import datetime
+import sys
+import subprocess  # Import subprocess module
 
 # Script metadata
 AUTHOR_STRING = "Author: Arnaldo Hernandez <mailto:arjuhe@gmail.com>"
 VERSION = '.001'  # Initial version - please increment manually for each modification
-BUILD_STRING = f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+BUILD_STRING = f"Build: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"  # Build date and time
 
 # ANSI color codes - Basic Colors for Fallback
 COLOR_RESET = '\033[0m'
@@ -34,9 +36,8 @@ COLOR_MAP = {
     'bright_magenta': '\033[95m',
     'bright_cyan': '\033[96m',
     'bright_white': '\033[97m',
-    'neutral_green_reset': '\033[0m\033[92m' # Special case for neutral green with reset
+    'neutral_green_reset': '\033[0m\033[92m'  # Special case for neutral green with reset
 }
-
 
 CLEAR_SCREEN_CODE = '\033[2J\033[H'  # ANSI escape code to clear screen and reset cursor
 
@@ -44,6 +45,7 @@ CLEAR_SCREEN_CODE = '\033[2J\033[H'  # ANSI escape code to clear screen and rese
 def clear_screen():
     """Clears the terminal screen using ANSI escape codes."""
     print(CLEAR_SCREEN_CODE, end='')
+
 
 def rotate_x(point, angle):
     """Rotates a 3D point around the x-axis."""
@@ -53,6 +55,7 @@ def rotate_x(point, angle):
     sin_rad = math.sin(rad)
     return (x, y * cos_rad - z * sin_rad, y * sin_rad + z * cos_rad)
 
+
 def rotate_y(point, angle):
     """Rotates a 3D point around the y-axis."""
     x, y, z = point
@@ -60,6 +63,7 @@ def rotate_y(point, angle):
     cos_rad = math.cos(rad)
     sin_rad = math.sin(rad)
     return (x * cos_rad + z * sin_rad, y, -x * sin_rad + z * cos_rad)
+
 
 def rotate_z(point, angle):
     """Rotates a 3D point around the z-axis."""
@@ -69,6 +73,7 @@ def rotate_z(point, angle):
     sin_rad = math.sin(rad)
     return (x * cos_rad - y * sin_rad, x * sin_rad + y * cos_rad, z)
 
+
 def project_point(point, screen_width, screen_height, zoom=10, offset_x=0, offset_y=0):
     """Projects a 3D point to 2D screen coordinates."""
     x, y, z = point
@@ -77,19 +82,22 @@ def project_point(point, screen_width, screen_height, zoom=10, offset_x=0, offse
     y_2d = int(screen_height / 2 + offset_y - factor * y * screen_height / 2)
     return (x_2d, y_2d)
 
+
 def normalize_vector(vec):
     """Normalizes a 3D vector to unit length."""
     x, y, z = vec
-    magnitude = math.sqrt(x*x + y*y + z*z)
+    magnitude = math.sqrt(x * x + y * y + z * z)
     if magnitude == 0:
         return (0, 0, 0)
-    return (x/magnitude, y/magnitude, z/magnitude)
+    return (x / magnitude, y / magnitude, z / magnitude)
+
 
 def cross_product(vec1, vec2):
     """Calculates the cross product of two 3D vectors."""
     x1, y1, z1 = vec1
     x2, y2, z2 = vec2
-    return (y1*z2 - z1*y2, z1*x2 - x1*z2, x1*y2 - y1*x2)
+    return (y1 * z2 - z1 * y2, z1 * x2 - x1 * z2, x1 * y2 - y1 * x2)
+
 
 def calculate_normal(face_vertices):
     """Calculates the normal vector of a face."""
@@ -102,6 +110,7 @@ def calculate_normal(face_vertices):
     normal = cross_product(vec1, vec2)
     return normalize_vector(normal)
 
+
 def draw_line(screen, point1_2d, point2_2d, draw_char, color_code, screen_width, screen_height):
     """Draws a colored line on the screen buffer."""
     x1, y1 = point1_2d
@@ -110,15 +119,15 @@ def draw_line(screen, point1_2d, point2_2d, draw_char, color_code, screen_width,
     if not (0 <= x1 < screen_width and 0 <= y1 < screen_height and 0 <= x2 < screen_width and 0 <= y2 < screen_height):
         return
 
-    if x1 == x2: # Vertical line
+    if x1 == x2:  # Vertical line
         for y in range(min(y1, y2), max(y1, y2) + 1):
             if 0 <= y < screen_height:
-                screen[y][x1] = (draw_char, color_code) # Store char and color
-    elif y1 == y2: # Horizontal line
+                screen[y][x1] = (draw_char, color_code)  # Store char and color
+    elif y1 == y2:  # Horizontal line
         for x in range(min(x1, x2), max(x1, x2) + 1):
             if 0 <= x < screen_width:
-                screen[y1][x] = (draw_char, color_code) # Store char and color
-    else: # Diagonal-ish line (very basic)
+                screen[y1][x] = (draw_char, color_code)  # Store char and color
+    else:  # Diagonal-ish line (very basic)
         dx = abs(x2 - x1)
         dy = abs(y2 - y1)
         sx = 1 if x1 < x2 else -1
@@ -128,7 +137,7 @@ def draw_line(screen, point1_2d, point2_2d, draw_char, color_code, screen_width,
         x, y = x1, y1
         while True:
             if 0 <= x < screen_width and 0 <= y < screen_height:
-                screen[y][x] = (draw_char, color_code) # Store char and color
+                screen[y][x] = (draw_char, color_code)  # Store char and color
             if x == x2 and y == y2:
                 break
             e2 = 2 * err
@@ -162,11 +171,11 @@ def draw_filled_polygon(screen, points_2d, draw_char, color_code, screen_width, 
         intersections.sort()
         for i in range(0, len(intersections), 2):
             x_start = intersections[i]
-            x_end = intersections[i+1] if i+1 < len(intersections) else screen_width
+            x_end = intersections[i + 1] if i + 1 < len(intersections) else screen_width
 
             for x in range(max(0, x_start), min(screen_width, x_end + 1)):
                 if 0 <= y < screen_height:
-                    screen[y][x] = (draw_char, color_code) # Store char and color
+                    screen[y][x] = (draw_char, color_code)  # Store char and color
 
 
 def draw_cube(screen, vertices, faces, edges, screen_width, screen_height, rotation_angles, shades, zoom_level, light_direction, outline_char, bright_color_code, neutral_color_code, dark_color_code, outline_color_code, no_color):
@@ -192,22 +201,22 @@ def draw_cube(screen, vertices, faces, edges, screen_width, screen_height, rotat
     face_depths.sort(key=lambda item: item[0], reverse=True)
 
     for avg_z, face, intensity in face_depths:
-        if avg_z < 0: # Back-face culling
+        if avg_z < 0:  # Back-face culling
             continue
 
         face_vertices_2d = [projected_vertices[v_index] for v_index in face]
 
         # 3-Shade gradient mapping with colors
-        if no_color: # No color mode
-            draw_char = shades[1] # Use neutral shade character, no color
-            color_code = COLOR_RESET # or empty string ''
-        elif intensity > 2.0/3.0: # Brightest third
+        if no_color:  # No color mode
+            draw_char = shades[1]  # Use neutral shade character, no color
+            color_code = COLOR_RESET  # or empty string ''
+        elif intensity > 2.0 / 3.0:  # Brightest third
             draw_char = shades[0]
             color_code = bright_color_code
-        elif intensity > 1.0/3.0: # Middle third
+        elif intensity > 1.0 / 3.0:  # Middle third
             draw_char = shades[1]
             color_code = neutral_color_code
-        else:                                      # Darkest third
+        else:  # Darkest third
             draw_char = shades[2]
             color_code = dark_color_code
 
@@ -220,7 +229,7 @@ def draw_cube(screen, vertices, faces, edges, screen_width, screen_height, rotat
         projected_edges.append((projected_vertices[v1_index], projected_vertices[v2_index]))
 
     for edge_points_2d in projected_edges:
-        line_color = COLOR_RESET if no_color else outline_color_code # No outline color if no_color
+        line_color = COLOR_RESET if no_color else outline_color_code  # No outline color if no_color
         draw_line(screen, edge_points_2d[0], edge_points_2d[1], outline_char, line_color, screen_width, screen_height)
 
 
@@ -228,19 +237,57 @@ def initialize_screen(width, height):
     """Creates an empty screen buffer. Now stores (char, color_code) tuples."""
     return [[(' ', COLOR_RESET) for _ in range(width)] for _ in range(height)]
 
+
 def display_screen(screen, no_color):
     """Prints the screen buffer to the terminal, including color codes."""
     for row in screen:
         colored_row = ""
-        current_color = COLOR_RESET # Start with reset color
+        current_color = COLOR_RESET  # Start with reset color
         for char, color_code in row:
-            if not no_color: # Apply colors only if no_color is False
-                if color_code != current_color: # Change color only if needed
+            if not no_color:  # Apply colors only if no_color is False
+                if color_code != current_color:  # Change color only if needed
                     colored_row += color_code
                     current_color = color_code
             colored_row += char
-        colored_row += COLOR_RESET # Reset color at the end of each row
+        colored_row += COLOR_RESET  # Reset color at the end of each row
         print(colored_row)
+
+
+def get_terminal_command():
+    """Detects the terminal and returns the appropriate command to open a new window."""
+    platform = sys.platform
+    terminal_command = []
+
+    if platform.startswith('linux'):
+        # Prioritize gnome-terminal, xterm, konsole, fallback to xterm
+        for term in ['gnome-terminal', 'konsole', 'xterm']:  # Check in order of preference
+            if subprocess.run(['which', term], capture_output=True, check=False).returncode == 0:  # Check if terminal exists
+                terminal_command = [term, '-e']
+                return terminal_command
+        return ['xterm', '-e']  # Fallback to xterm if none found
+
+    elif platform.startswith('darwin'):  # macOS
+        term_program = os.environ.get('TERM_PROGRAM')
+        if term_program in ('iTerm.app', 'iTerm2'): # Prioritize iTerm if $TERM_PROGRAM indicates iTerm
+            app_name = 'iTerm2' if term_program == 'iTerm2' else 'iTerm' # Consistent app name for search
+            app_path_result = subprocess.run(['mdfind', f'kMDItemContentTypeTree=com.apple.application AND kMDItemDisplayName="{app_name}"'], capture_output=True, text=True, check=False)
+            if app_path_result.returncode == 0 and app_path_result.stdout.strip():
+                app_path = app_path_result.stdout.strip().splitlines()[0]
+                return ['open', '-a', app_path]
+
+        # Fallback to searching for iTerm2 then Terminal.app if $TERM_PROGRAM is not iTerm or iTerm not found via env var
+        for app_name in ['iTerm2', 'iTerm', 'Terminal']:  # Check iTerm2 first, then generic 'Terminal'
+            app_path_result = subprocess.run(['mdfind', f'kMDItemContentTypeTree=com.apple.application AND kMDItemDisplayName="{app_name}"'], capture_output=True, text=True, check=False)
+            if app_path_result.returncode == 0 and app_path_result.stdout.strip():  # If mdfind finds the app
+                app_path = app_path_result.stdout.strip().splitlines()[0]  # Take first result if multiple
+                terminal_command = ['open', '-a', app_path]  # Use 'open -a <app path>' for macOS
+                return terminal_command
+        return ['open', '-a', 'Terminal']  # Fallback to default Terminal.app
+
+    elif platform.startswith('win'):  # Windows
+            return ['start', 'cmd', '/k', 'python']  # 'start cmd /k' for new cmd window
+
+    return terminal_command  # Return empty list for unsupported platforms
 
 
 def parse_arguments():
@@ -258,14 +305,15 @@ def parse_arguments():
                      Use 'neutral_green_reset' for special neutral green with reset
 
         Example Usage:
-          python cube_color.py -W 80 -H 40 -Z 15 -S oO@ -O '#' -XS 2.0 -YS 2.5 -ZS 1.2 -LX 1.0 -LY 0.5 -LZ -0.8
-          python cube_color.py -W 60 -H 30 -BC bright_cyan -DC magenta -OC yellow -S '@XO'
-          python cube_color.py --no_color -S 'X- ' # Example: No color output
-          python cube_color.py --build_info # Display build information
+          python cube.py -W 80 -H 40 -Z 15 -S oO@ -O '#' -XS 2.0 -YS 2.5 -ZS 1.2 -LX 1.0 -LY 0.5 -LZ -0.8
+          python cube.py -W 60 -H 30 -BC bright_cyan -DC magenta -OC yellow -S '@XO'
+          python cube.py --no_color -S 'X- ' # Example: No color output
+          python cube.py --build_info # Display build information
+          python cube.py --new_window # Run in a new terminal window
         """,
-        formatter_class=argparse.RawTextHelpFormatter # To keep formatting in help text
+        formatter_class=argparse.RawTextHelpFormatter  # To keep formatting in help text
     )
-    parser.add_argument('--width', '-W', type=int, default=60, help='Screen width (default: 60).') # Screen dimensions
+    parser.add_argument('--width', '-W', type=int, default=60, help='Screen width (default: 60).')  # Screen dimensions
     parser.add_argument('--height', '-H', type=int, default=30, help='Screen height (default: 30).')
 
     # Rotation and Zoom
@@ -286,7 +334,7 @@ def parse_arguments():
     # Custom Colors
     parser.add_argument('--bright_color', '-BC', type=str, default='bright_red', help='Color for brightest shade (default: bright_red).')
     parser.add_argument('--neutral_color', '-NC', type=str, default='neutral_green_reset', help='Color for neutral shade (default: neutral_green_reset).')
-    parser.add_argument('--dark_color', '-DC', type=str, default='bright_blue', help='Color for darkest shade (default: bright_blue).')
+    parser.add_argument('--dark_color', '-DC', type=str, default='bright_blue', help='Color for darkest shade (default: dark_blue).')
     parser.add_argument('--outline_color', '-OC', type=str, default='bright_yellow', help='Color for outline (default: bright_yellow).')
 
     # No Color Mode
@@ -295,6 +343,8 @@ def parse_arguments():
     # Build Information
     parser.add_argument('--build_info', '-BI', action='store_true', help='Display build information (date and time).')
 
+    # New Window Mode
+    parser.add_argument('--new_window', '-NW', action='store_true', help='Run the script in a new terminal window.')
 
     return parser.parse_args()
 
@@ -302,33 +352,58 @@ def parse_arguments():
 if __name__ == "__main__":
     args = parse_arguments()
 
-    if args.build_info: # Print build information and exit
-        print(f"{COLOR_NEUTRAL_DEFAULT}{AUTHOR_STRING}{COLOR_RESET}") # Author
-        print(f"Version: {VERSION}") # Version
-        print(f"Build Time: {BUILD_STRING}") # Build Time
-        exit() # Exit after printing build info
+    if args.build_info:  # Print build information and exit
+        print(f"{COLOR_NEUTRAL_DEFAULT}{AUTHOR_STRING}{COLOR_RESET}")  # Author
+        print(f"Version: {VERSION}")  # Version
+        print(f"Build Time: {BUILD_STRING}")  # Build Time
+        exit()  # Exit after printing build info
 
+    if args.new_window:  # Run in a new window
+        terminal_command = get_terminal_command()  # Detect terminal
+
+        if terminal_command:
+            # Construct the command to run the script again in a new terminal window
+            script_path = os.path.abspath(__file__)  # Get absolute path of the script
+            command = [sys.executable, script_path]  # Start with python and script path
+            for arg in sys.argv[1:]:  # Iterate through original arguments
+                if arg not in ['--new_window', '-NW']:  # Exclude new_window arg itself
+                    command.append(arg)  # Add other arguments
+
+            full_command = terminal_command + command
+
+            try:
+                subprocess.Popen(full_command, start_new_session=True)
+                print(f"Starting cube animation in a new terminal window using: {' '.join(terminal_command[:2])}...")  # Indicate terminal used
+                exit()  # Exit original script instance
+            except FileNotFoundError as e:
+                print(f"Error: Terminal command not found: {terminal_command[0]}. Cannot open new window. {e}")
+                print("Running in the current terminal instead.")
+            except Exception as e:
+                print(f"Error opening new window: {e}")
+                print("Running in the current terminal instead.")
+        else:
+            print("No suitable terminal command found for new window. Running in the current terminal.")
 
     screen_width = args.width
     screen_height = args.height
 
-    vertices = [ # Smaller cube vertices
-        (-0.5, -0.5, -0.5), ( 0.5, -0.5, -0.5), ( 0.5,  0.5, -0.5), (-0.5,  0.5, -0.5),
-        (-0.5, -0.5,  0.5), ( 0.5, -0.5,  0.5), ( 0.5,  0.5,  0.5), (-0.5,  0.5,  0.5)
+    vertices = [  # Smaller cube vertices
+        (-0.5, -0.5, -0.5), (0.5, -0.5, -0.5), (0.5, 0.5, -0.5), (-0.5, 0.5, -0.5),
+        (-0.5, -0.5, 0.5), (0.5, -0.5, 0.5), (0.5, 0.5, 0.5), (-0.5, 0.5, 0.5)
     ]
 
-    faces = [ # Face vertex indices (counter-clockwise)
+    faces = [  # Face vertex indices (counter-clockwise)
         [0, 3, 2, 1], [4, 5, 6, 7], [3, 7, 6, 2],
         [0, 1, 5, 4], [0, 4, 7, 3], [1, 2, 6, 5]
     ]
 
-    edges = [ # Cube edges (vertex index pairs)
+    edges = [  # Cube edges (vertex index pairs)
         (0, 1), (1, 2), (2, 3), (3, 0),
         (4, 5), (5, 6), (6, 7), (7, 4),
         (0, 4), (1, 5), (2, 6), (3, 7)
     ]
 
-    shades = list(args.shades) # 3 shading levels
+    shades = list(args.shades)  # 3 shading levels
     if len(shades) != 3:
         print("Warning: Shading argument should provide exactly 3 characters. Using default '.-#'")
         shades = list('.-#')
@@ -346,13 +421,12 @@ if __name__ == "__main__":
     dark_color_code = COLOR_MAP.get(args.dark_color.lower(), COLOR_DARK_DEFAULT)
     outline_color_code = COLOR_MAP.get(args.outline_color.lower(), COLOR_OUTLINE_DEFAULT)
 
-
-    print(f"{COLOR_NEUTRAL_DEFAULT}{AUTHOR_STRING}{COLOR_RESET}") # Print author in neutral color
-    print(f"Version: {VERSION}") # Print version in default color
+    print(f"{COLOR_NEUTRAL_DEFAULT}{AUTHOR_STRING}{COLOR_RESET}")  # Print author in neutral color
+    print(f"Version: {VERSION}")  # Print version in default color
+    print(f"{BUILD_STRING}")  # Print build string
     if no_color_mode:
         print("(No color mode enabled)")
-    print() # Add an empty line for spacing
-
+    print()  # Add an empty line for spacing
 
     while True:
         screen = initialize_screen(screen_width, screen_height)
