@@ -1,0 +1,31 @@
+"""
+Filename: your_script_name.py
+Author: Your Name <your.email@example.com>
+License: Apache License 2.0
+
+Description:
+    A brief, one-line description of what this script does.
+
+Detailed Description:  (Optional, but recommended for complex scripts)
+    A more detailed explanation of the script's purpose, 
+    key functionalities, algorithms used, etc.  Can span multiple lines.
+
+Dependencies: (Optional)
+    List any external libraries or modules that this script relies on.
+    Example:
+        - numpy
+        - pandas
+
+Usage: (Optional)
+    Provide a simple example of how to run the script, including 
+    any command-line arguments or input files.
+    Example:
+        python your_script_name.py input.txt output.csv
+
+Notes: (Optional)
+    Any additional notes, caveats, or known issues.
+
+Date Created: YYYY-MM-DD
+Last Modified: YYYY-MM-DD (Update this whenever you make changes)
+"""
+
